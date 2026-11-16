@@ -1,0 +1,4 @@
+# Copy this file to db.properties and fill in your own values.
+db.url=jdbc:derby://localhost:1527/student
+db.user=your-user
+db.password=your-password

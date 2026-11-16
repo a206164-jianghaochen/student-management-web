@@ -1,0 +1,14 @@
+# NetBeans build output
+build/
+dist/
+nbproject/private/
+
+# Compiled classes and packaged artifacts
+*.class
+*.war
+*.jar
+
+# Logs and IDE local state
+*.log
+# Local database credentials
+src/java/db.properties
