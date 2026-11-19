@@ -12,23 +12,26 @@ import util.DBUtil;
 /**
  * All SQL for the STUDENT table lives here.
  * The servlet never sees a Connection, a ResultSet, or a SQL string.
+ *
+ * The primary key is ID, an identity column maintained by the database:
+ * inserts never mention it, and the value comes back on select.
  */
 public class StudentDAO {
 
-    private static final String COLUMNS = "NAME, EMAIL, PHONENO";
+    private static final String COLUMNS = "ID, NAME, EMAIL, PHONENO";
 
     private static final String SQL_FIND_ALL
-            = "SELECT " + COLUMNS + " FROM STUDENT";
-    private static final String SQL_FIND_BY_NAME
-            = "SELECT " + COLUMNS + " FROM STUDENT WHERE NAME = ?";
+            = "SELECT " + COLUMNS + " FROM STUDENT ORDER BY ID";
+    private static final String SQL_FIND_BY_ID
+            = "SELECT " + COLUMNS + " FROM STUDENT WHERE ID = ?";
     private static final String SQL_SEARCH_BY_NAME
-            = "SELECT " + COLUMNS + " FROM STUDENT WHERE NAME LIKE ?";
+            = "SELECT " + COLUMNS + " FROM STUDENT WHERE LOWER(NAME) LIKE LOWER(?) ORDER BY ID";
     private static final String SQL_INSERT
             = "INSERT INTO STUDENT (NAME, EMAIL, PHONENO) VALUES (?, ?, ?)";
     private static final String SQL_UPDATE
-            = "UPDATE STUDENT SET EMAIL = ?, PHONENO = ? WHERE NAME = ?";
+            = "UPDATE STUDENT SET NAME = ?, EMAIL = ?, PHONENO = ? WHERE ID = ?";
     private static final String SQL_DELETE
-            = "DELETE FROM STUDENT WHERE NAME = ?";
+            = "DELETE FROM STUDENT WHERE ID = ?";
 
     public List<Student> findAll() throws SQLException {
         List<Student> students = new ArrayList<>();
@@ -56,11 +59,11 @@ public class StudentDAO {
         return students;
     }
 
-    /** @return the student, or null when no row matches */
-    public Student findByName(String name) throws SQLException {
+    /** @return the student, or null when no row has that id */
+    public Student findById(int id) throws SQLException {
         try (Connection conn = DBUtil.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(SQL_FIND_BY_NAME)) {
-            pstmt.setString(1, name);
+                PreparedStatement pstmt = conn.prepareStatement(SQL_FIND_BY_ID)) {
+            pstmt.setInt(1, id);
             try (ResultSet rs = pstmt.executeQuery()) {
                 return rs.next() ? toStudent(rs) : null;
             }
@@ -75,20 +78,22 @@ public class StudentDAO {
         }
     }
 
-    public void update(String originalName, String newEmail, String newPhoneNo) throws SQLException {
+    /** Updates the row whose id matches, using the values carried by the student. */
+    public void update(Student student) throws SQLException {
         try (Connection conn = DBUtil.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(SQL_UPDATE)) {
-            pstmt.setString(1, newEmail);
-            pstmt.setString(2, newPhoneNo);
-            pstmt.setString(3, originalName);
+            pstmt.setString(1, student.getName());
+            pstmt.setString(2, student.getEmail());
+            pstmt.setString(3, student.getPhoneNo());
+            pstmt.setInt(4, student.getId());
             pstmt.executeUpdate();
         }
     }
 
-    public void delete(String name) throws SQLException {
+    public void delete(int id) throws SQLException {
         try (Connection conn = DBUtil.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(SQL_DELETE)) {
-            pstmt.setString(1, name);
+            pstmt.setInt(1, id);
             pstmt.executeUpdate();
         }
     }
@@ -117,6 +122,7 @@ public class StudentDAO {
         }
     }
 
+    /** Binds the three columns an insert writes; ID is left to the database. */
     private void bind(PreparedStatement pstmt, Student student) throws SQLException {
         pstmt.setString(1, student.getName());
         pstmt.setString(2, student.getEmail());
@@ -125,6 +131,7 @@ public class StudentDAO {
 
     private Student toStudent(ResultSet rs) throws SQLException {
         return new Student(
+                rs.getInt("ID"),
                 rs.getString("NAME"),
                 rs.getString("EMAIL"),
                 rs.getString("PHONENO"));

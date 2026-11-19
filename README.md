@@ -47,11 +47,16 @@ Create a Derby database named `student` with one table:
 
 ```sql
 CREATE TABLE STUDENT (
-    NAME    VARCHAR(100),
+    ID      INT NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1),
+    NAME    VARCHAR(100) NOT NULL,
     EMAIL   VARCHAR(100),
-    PHONENO VARCHAR(30)
+    PHONENO VARCHAR(30),
+    PRIMARY KEY (ID)
 );
 ```
+
+`ID` is assigned by the database: inserts never send a value for it, and the
+generated key comes back on the next select. Names are free to repeat.
 
 Copy `src/java/db.properties.example` to `src/java/db.properties` and fill in
 your own values:
@@ -71,7 +76,7 @@ db.password=<your password>
 
 ## Known limitations
 
-- `NAME` is used as the primary key, so duplicate names would collide. Moving to
-  an auto-increment `ID` is the next step.
+- No pagination: a listing loads the whole table into memory.
+- No server-side validation beyond what the browser enforces with `required`.
 - No connection pooling yet; `DBUtil` opens a connection per request.
 - HTML is written from the servlet rather than from JSP views.

@@ -8,8 +8,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.List;
 import model.Student;
@@ -53,7 +51,7 @@ public class StudentServlet extends HttpServlet {
                     renderInsertForm(out);
                     break;
                 case "edit":
-                    renderEditForm(request.getParameter("name"), out);
+                    renderEditForm(parseId(request.getParameter("id")), out);
                     break;
                 case "search":
                     searchStudent(request.getParameter("searchKeyword"), out);
@@ -84,12 +82,14 @@ public class StudentServlet extends HttpServlet {
                         request.getParameter("email"),
                         request.getParameter("phoneno")));
             } else if ("delete".equals(action)) {
-                dao.delete(request.getParameter("name"));
+                dao.delete(parseId(request.getParameter("id")));
             } else if ("update".equals(action)) {
-                dao.update(
-                        request.getParameter("originalName"),
+                Student student = new Student(
+                        parseId(request.getParameter("id")),
+                        request.getParameter("name"),
                         request.getParameter("email"),
                         request.getParameter("phoneno"));
+                dao.update(student);
             }
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -100,25 +100,24 @@ public class StudentServlet extends HttpServlet {
     private void renderTable(List<Student> students, PrintWriter out) {
         out.println("<table border='1' cellpadding='8' cellspacing='0' style='border-collapse:collapse;'>");
         out.println("<tr style='background-color:#f2f2f2;'>");
-        out.println("<th>NAME</th><th>EMAIL</th><th>PHONENO</th><th>ACTIONS</th>");
+        out.println("<th>ID</th><th>NAME</th><th>EMAIL</th><th>PHONENO</th><th>ACTIONS</th>");
         out.println("</tr>");
 
         for (Student student : students) {
-            String name = student.getName();
             out.println("<tr>");
-            out.println("<td>" + HtmlUtil.escape(name) + "</td>");
+            out.println("<td>" + student.getId() + "</td>");
+            out.println("<td>" + HtmlUtil.escape(student.getName()) + "</td>");
             out.println("<td>" + HtmlUtil.escape(student.getEmail()) + "</td>");
             out.println("<td>" + HtmlUtil.escape(student.getPhoneNo()) + "</td>");
             out.println("<td>");
 
             out.println("<form action='student' method='POST' style='display:inline;'>");
             out.println("<input type='hidden' name='action' value='delete'/>");
-            out.println("<input type='hidden' name='name' value='" + HtmlUtil.escape(name) + "'/>");
+            out.println("<input type='hidden' name='id' value='" + student.getId() + "'/>");
             out.println("<input type='submit' value='Delete' onclick='return confirm(\"Are you sure?\");'/>");
             out.println("</form>");
 
-            String editUrl = "student?action=edit&name="
-                    + URLEncoder.encode(name, StandardCharsets.UTF_8);
+            String editUrl = "student?action=edit&id=" + student.getId();
             out.println("<a href='" + HtmlUtil.escape(editUrl) + "'>Edit</a>");
 
             out.println("</td>");
@@ -173,21 +172,23 @@ public class StudentServlet extends HttpServlet {
         out.println("</form>");
     }
 
-    private void renderEditForm(String name, PrintWriter out) {
-        if (name == null || name.isEmpty()) {
+    private void renderEditForm(int id, PrintWriter out) {
+        if (id <= 0) {
             showAllStudents(out);
             return;
         }
         try {
-            Student student = dao.findByName(name);
+            Student student = dao.findById(id);
             if (student == null) {
-                out.println("<p style='color:red;'>No such student.</p>");
+                out.println("<p style='color:red;'>No student with id " + id + ".</p>");
                 return;
             }
-            out.println("<h3>Edit Student: " + HtmlUtil.escape(name) + "</h3>");
+            out.println("<h3>Edit Student #" + student.getId() + "</h3>");
             out.println("<form action='student' method='POST'>");
             out.println("<input type='hidden' name='action' value='update'/>");
-            out.println("<input type='hidden' name='originalName' value='" + HtmlUtil.escape(name) + "'/>");
+            out.println("<input type='hidden' name='id' value='" + student.getId() + "'/>");
+            out.println("Name: <input type='text' name='name' value='"
+                    + HtmlUtil.escape(student.getName()) + "' required/> ");
             out.println("Email: <input type='email' name='email' value='"
                     + HtmlUtil.escape(student.getEmail()) + "' required/> ");
             out.println("Phone: <input type='text' name='phoneno' value='"
@@ -197,6 +198,18 @@ public class StudentServlet extends HttpServlet {
             out.println("</form>");
         } catch (SQLException ex) {
             printError("Error", ex, out);
+        }
+    }
+
+    /** Reads an id from a request parameter; anything unparsable becomes 0. */
+    private int parseId(String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException ex) {
+            return 0;
         }
     }
 
