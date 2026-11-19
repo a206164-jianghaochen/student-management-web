@@ -27,12 +27,19 @@ page renders it as literal text rather than bold.
 src/java/
   servlet/
     StudentServlet.java     request handling and HTML rendering
+  dao/
+    StudentDAO.java         all SQL for the STUDENT table
+  model/
+    Student.java            one row; no JDBC, no HTML
   util/
     DBUtil.java             loads db.properties, hands out connections
     HtmlUtil.java           HTML escaping
   db.properties             local credentials (not committed)
   db.properties.example     template to copy
 ```
+
+The servlet never builds a SQL string or opens a `Connection`: it asks the DAO
+for a `List<Student>` and renders that.
 
 ## Database
 
